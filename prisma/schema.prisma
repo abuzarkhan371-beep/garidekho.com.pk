@@ -1,0 +1,1027 @@
+// Garidekho.com.pk — normalized PostgreSQL data contract
+// Prisma ORM 7
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRoleName {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+  SUPPORT_AGENT
+  DEALER
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum AuthProvider {
+  CREDENTIALS
+  GOOGLE
+  PHONE
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  REJECTED
+  EXPIRED
+  SOLD
+}
+
+enum SellerType {
+  OWNER
+  DEALER
+}
+
+enum Transmission {
+  MANUAL
+  AUTOMATIC
+  TIPTRONIC
+  CVT
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  HYBRID
+  ELECTRIC
+  CNG
+  LPG
+}
+
+enum BodyType {
+  SEDAN
+  HATCHBACK
+  SUV
+  CROSSOVER
+  COUPE
+  WAGON
+  PICKUP
+  VAN
+  TRUCK
+  BUS
+  BIKE
+  SCOOTER
+  THREE_WHEELER
+  OTHER
+}
+
+enum AssemblyType {
+  LOCAL
+  IMPORTED
+  ASSEMBLED
+}
+
+enum VehicleCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum PaymentProvider {
+  JAZZCASH
+  EASYPAISA
+  BANK_TRANSFER
+  CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  DISPUTED
+}
+
+enum PaymentPurpose {
+  LISTING_PROMOTION
+  DEALER_SUBSCRIPTION
+  FEATURED_LISTING
+  VERIFICATION_FEE
+}
+
+enum PromotionType {
+  FEATURED
+  PREMIUM
+  HOMEPAGE
+  TOP_SEARCH
+  URGENT
+}
+
+enum PromotionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum TaxonomyGroup {
+  BODY_TYPE
+  FUEL_TYPE
+  TRANSMISSION
+  ASSEMBLY_TYPE
+  CONDITION
+  FEATURE
+}
+
+enum BillingInterval {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum InquiryStatus {
+  NEW
+  READ
+  REPLIED
+  CLOSED
+}
+
+enum MessageSenderType {
+  USER
+  DEALER
+  SYSTEM
+  ADMIN
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ContentStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationType {
+  LISTING_APPROVED
+  LISTING_REJECTED
+  LISTING_EXPIRING
+  NEW_INQUIRY
+  NEW_MESSAGE
+  PAYMENT_RECEIVED
+  PROMOTION_ACTIVE
+  REPORT_UPDATE
+  SYSTEM
+}
+
+// ---------------------------------------------------------------------------
+// Identity & access
+// ---------------------------------------------------------------------------
+
+model Role {
+  id          String           @id @default(uuid())
+  name        UserRoleName     @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  key         String           @id
+  description String?
+  createdAt   DateTime         @default(now())
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleName       UserRoleName
+  permissionKey  String
+  role           Role       @relation(fields: [roleName], references: [name], onDelete: Cascade)
+  permission     Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+
+  @@id([roleName, permissionKey])
+  @@map("role_permissions")
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  phone         String?       @unique
+  passwordHash  String?
+  roleName      UserRoleName  @default(USER)
+  status        UserStatus    @default(ACTIVE)
+  role          Role          @relation(fields: [roleName], references: [name])
+  profile       UserProfile?
+  sessions      Session[]
+  oauthAccounts OAuthAccount[]
+  otpCodes      OtpCode[]
+  tokens        VerificationToken[]
+  listings      Listing[]
+  dealer        Dealer?
+  favourites    Favourite[]
+  comparisons   Comparison[]
+  views         ListingView[]
+  inquiries     Inquiry[]
+  conversationsAsBuyer Conversation[] @relation("BuyerConversations")
+  conversationsAsSeller Conversation[] @relation("SellerConversations")
+  messages      Message[]
+  reviews       Review[]
+  reports       Report[]
+  notifications Notification[]
+  adminLogs     AdminLog[]
+  payments      Payment[]
+  savedSearches SavedSearch[]
+  cmsPages      CmsPage[]
+  newsArticles  NewsArticle[]
+  lastLoginAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+
+  @@index([status, createdAt])
+  @@map("users")
+}
+
+model UserProfile {
+  id              String             @id @default(uuid())
+  userId          String             @unique
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName       String?
+  lastName        String?
+  avatarUrl       String?
+  phoneVerifiedAt DateTime?
+  emailVerifiedAt DateTime?
+  identityStatus  VerificationStatus @default(UNVERIFIED)
+  identityNumber  String?
+  bio             String?
+  cityId          String?
+  city            City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  dateOfBirth     DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@map("user_profiles")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model OAuthAccount {
+  id                String       @id @default(uuid())
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          AuthProvider
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  createdAt         DateTime     @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@map("oauth_accounts")
+}
+
+model OtpCode {
+  id         String   @id @default(uuid())
+  identifier String
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose    String
+  codeHash   String
+  attempts   Int      @default(0)
+  maxAttempts Int     @default(5)
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, purpose, createdAt])
+  @@map("otp_codes")
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  purpose   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, purpose])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Taxonomy & location
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?
+  icon        String?
+  imageUrl    String?
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryTree")
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  vehicles    Vehicle[]
+
+  @@index([parentId, sortOrder])
+  @@map("categories")
+}
+
+model VehicleMake {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  logoUrl     String?
+  country     String?
+  description String?
+  isPopular   Boolean       @default(false)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  models      VehicleModel[]
+  vehicles    Vehicle[]
+
+  @@map("vehicle_makes")
+}
+
+model VehicleModel {
+  id          String          @id @default(uuid())
+  makeId      String
+  make        VehicleMake     @relation(fields: [makeId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String          @unique
+  yearFrom    Int?
+  yearTo      Int?
+  bodyType    BodyType?
+  description String?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  variants    VehicleVariant[]
+  vehicles    Vehicle[]
+
+  @@index([makeId, name])
+  @@map("vehicle_models")
+}
+
+model VehicleVariant {
+  id            String       @id @default(uuid())
+  modelId       String
+  model         VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  name          String
+  slug          String       @unique
+  engineCc      Int?
+  /// Stored as a string so admins can add new options without a code change.
+  transmission  String?
+  /// Stored as a string so admins can add new options without a code change.
+  fuelType      String?
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  vehicles      Vehicle[]
+
+  @@index([modelId, name])
+  @@map("vehicle_variants")
+}
+
+model Province {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  code      String   @unique
+  capital   String?
+  cities    City[]
+  dealers   Dealer[]
+  createdAt DateTime @default(now())
+
+  @@map("provinces")
+}
+
+model City {
+  id            String        @id @default(uuid())
+  provinceId    String
+  province      Province      @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  name          String
+  slug          String        @unique
+  latitude      Float?
+  longitude     Float?
+  isMajor       Boolean       @default(false)
+  imageUrl      String?
+  description   String?
+  areas         Area[]
+  listings      Listing[]
+  registeredListings Listing[] @relation("RegistrationCity")
+  profiles      UserProfile[]
+  dealers       Dealer[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([provinceId, name])
+  @@index([provinceId, isMajor])
+  @@map("cities")
+}
+
+model Area {
+  id        String   @id @default(uuid())
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  name      String
+  slug      String
+  createdAt DateTime @default(now())
+  listings  Listing[]
+
+  @@unique([cityId, slug])
+  @@map("areas")
+}
+
+/// Admin-editable options for fields that used to be hardcoded enums.
+/// The frontend sell wizard and search filters read this table on every request.
+model TaxonomyOption {
+  id          String         @id @default(uuid())
+  groupName   TaxonomyGroup  @map("group")
+  value       String         @db.VarChar(64)
+  label       String         @db.VarChar(120)
+  description String?
+  icon        String?
+  sortOrder   Int            @default(0)
+  isActive    Boolean        @default(true)
+  isDefault   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([groupName, value])
+  @@index([groupName, isActive, sortOrder])
+  @@map("taxonomy_options")
+}
+
+// ---------------------------------------------------------------------------
+// Listings
+// ---------------------------------------------------------------------------
+
+model Vehicle {
+  id                String         @id @default(uuid())
+  categoryId        String
+  category          Category       @relation(fields: [categoryId], references: [id])
+  makeId            String?
+  make              VehicleMake?   @relation(fields: [makeId], references: [id], onDelete: SetNull)
+  modelId           String?
+  model             VehicleModel?  @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  variantId         String?
+  variant           VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  year              Int
+  mileageKm         Int            @default(0)
+  engineCc          Int?
+  /// Stored as a string so admins can add new options without a code change.
+  transmission      String?
+  /// Stored as a string so admins can add new options without a code change.
+  fuelType          String?
+  /// Stored as a string so admins can add new options without a code change.
+  bodyType          String?
+  exteriorColor     String?
+  interiorColor     String?
+  /// Stored as a string so admins can add new options without a code change.
+  assemblyType      String?
+  /// Stored as a string so admins can add new options without a code change.
+  condition         String?
+  registrationYear  Int?
+  seats             Int?
+  doors             Int?
+  driveType         String?
+  features          String[]
+  chassisNumber     String?
+  /// Detailed comparison specs supplied by admins for used cars.
+  specs             Json?
+  listing           Listing?
+
+  @@index([categoryId, makeId, modelId])
+  @@index([year, mileageKm])
+  @@index([bodyType, fuelType, transmission])
+  @@map("vehicles")
+}
+
+model Listing {
+  id              String           @id @default(uuid())
+  slug            String           @unique
+  title           String
+  description     String
+  vehicleId       String           @unique
+  vehicle         Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealerId        String?
+  dealer          Dealer?          @relation(fields: [dealerId], references: [id], onDelete: SetNull)
+  price           Int
+  negotiable      Boolean          @default(false)
+  status          ListingStatus    @default(DRAFT)
+  sellerType      SellerType       @default(OWNER)
+  sellerName      String
+  sellerPhone     String
+  whatsappNumber  String?
+  showPhone       Boolean          @default(true)
+  cityId          String?
+  city            City?            @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  areaId          String?
+  area            Area?            @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  registrationCityId String?
+  registrationCity City?           @relation("RegistrationCity", fields: [registrationCityId], references: [id], onDelete: SetNull)
+  latitude        Float?
+  longitude       Float?
+  isFeatured      Boolean          @default(false)
+  featuredRank    Int              @default(0)
+  isVerified      Boolean          @default(false)
+  viewCount       Int              @default(0)
+  favoriteCount   Int              @default(0)
+  rejectionReason String?
+  moderationNote  String?
+  publishedAt     DateTime?
+  expiresAt       DateTime?
+  soldAt          DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+  images          VehicleImage[]
+  views           ListingView[]
+  favourites      Favourite[]
+  comparisonItems ComparisonItem[]
+  inquiries       Inquiry[]
+  conversations   Conversation[]
+  reviews         Review[]
+  reports         Report[]
+  promotions      Promotion[]
+  notifications   Notification[]
+
+  @@index([status, publishedAt])
+  @@index([cityId, status])
+  @@index([price])
+  @@index([userId, status])
+  @@index([dealerId, status])
+  @@index([isFeatured, status])
+  @@index([createdAt])
+  @@map("listings")
+}
+
+model VehicleImage {
+  id         String   @id @default(uuid())
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  url        String
+  publicId   String?
+  alt        String?
+  position   Int      @default(0)
+  width      Int?
+  height     Int?
+  sizeBytes  Int?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([listingId, position])
+  @@map("vehicle_images")
+}
+
+model ListingView {
+  id        String    @id @default(uuid())
+  listingId String
+  listing   Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ipHash    String?
+  userAgent String?
+  referrer  String?
+  createdAt DateTime  @default(now())
+
+  @@index([listingId, createdAt])
+  @@index([userId, createdAt])
+  @@map("listing_views")
+}
+
+model Favourite {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+  @@map("favourites")
+}
+
+model Comparison {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String?
+  items     ComparisonItem[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("comparisons")
+}
+
+model ComparisonItem {
+  id           String     @id @default(uuid())
+  comparisonId String
+  comparison   Comparison @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  listingId    String
+  listing      Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  addedAt      DateTime   @default(now())
+
+  @@unique([comparisonId, listingId])
+  @@map("comparison_items")
+}
+
+model Inquiry {
+  id          String        @id @default(uuid())
+  listingId   String
+  listing     Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name        String
+  email       String?
+  phone       String?
+  message     String
+  status      InquiryStatus @default(NEW)
+  handledById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([listingId, status])
+  @@index([userId, createdAt])
+  @@map("inquiries")
+}
+
+model Conversation {
+  id             String    @id @default(uuid())
+  listingId      String
+  listing        Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId        String
+  buyer          User      @relation("BuyerConversations", fields: [buyerId], references: [id], onDelete: Cascade)
+  sellerId       String
+  seller         User      @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
+  messages       Message[]
+  lastMessageAt DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  @@unique([listingId, buyerId, sellerId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String?
+  sender         User?            @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  senderType     MessageSenderType
+  body           String
+  isRead         Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// ---------------------------------------------------------------------------
+// Dealer, monetization & payments
+// ---------------------------------------------------------------------------
+
+model Dealer {
+  id                String             @id @default(uuid())
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName      String
+  slug              String             @unique
+  description       String?
+  logoUrl           String?
+  coverUrl          String?
+  phone             String
+  whatsapp          String?
+  email             String?
+  website           String?
+  address           String?
+  cityId            String?
+  city              City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  provinceId        String?
+  province          Province?          @relation(fields: [provinceId], references: [id], onDelete: SetNull)
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedAt        DateTime?
+  ratingAvg         Float              @default(0)
+  ratingCount       Int                @default(0)
+  totalSales        Int                @default(0)
+  isActive          Boolean            @default(true)
+  listings          Listing[]
+  subscriptions     Subscription[]
+  payments          Payment[]
+  reviews           Review[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([verificationStatus, isActive])
+  @@map("dealers")
+}
+
+model DealerPlan {
+  id          String         @id @default(uuid())
+  name        String
+  slug        String         @unique
+  description String?
+  price       Int
+  interval    BillingInterval @default(MONTHLY)
+  listingLimit Int           @default(10)
+  features    String[]
+  isActive    Boolean        @default(true)
+  sortOrder   Int            @default(0)
+  subscriptions Subscription[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("dealer_plans")
+}
+
+model Subscription {
+  id         String         @id @default(uuid())
+  dealerId   String
+  dealer     Dealer         @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  planId     String
+  plan       DealerPlan     @relation(fields: [planId], references: [id])
+  status     PromotionStatus @default(PENDING)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  paymentId  String?        @unique
+  payment    Payment?       @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([dealerId, status])
+  @@map("subscriptions")
+}
+
+model AdPackage {
+  id          String      @id @default(uuid())
+  name        String
+  slug        String      @unique
+  description String?
+  price       Int
+  durationDays Int       @default(7)
+  features    String[]
+  isActive    Boolean     @default(true)
+  sortOrder   Int         @default(0)
+  promotions  Promotion[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("ad_packages")
+}
+
+model Payment {
+  id                String         @id @default(uuid())
+  userId            String?
+  user              User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  dealerId          String?
+  dealer            Dealer?        @relation(fields: [dealerId], references: [id], onDelete: SetNull)
+  provider          PaymentProvider
+  purpose           PaymentPurpose
+  providerReference String?        @unique
+  amount            Int
+  currency          String         @default("PKR")
+  status            PaymentStatus  @default(PENDING)
+  metadata          Json?
+  callbackPayload   Json?
+  failureReason     String?
+  verifiedAt        DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  subscription      Subscription?
+  promotions        Promotion[]
+
+  @@index([status, createdAt])
+  @@index([dealerId, createdAt])
+  @@map("payments")
+}
+
+model Promotion {
+  id        String          @id @default(uuid())
+  listingId String
+  listing   Listing         @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  packageId String?
+  adPackage AdPackage?      @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  paymentId String?
+  payment   Payment?        @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  type      PromotionType
+  status    PromotionStatus @default(PENDING)
+  rank      Int             @default(0)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([listingId, status])
+  @@index([status, endsAt])
+  @@map("promotions")
+}
+
+// ---------------------------------------------------------------------------
+// Content, community & system
+// ---------------------------------------------------------------------------
+
+model Review {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId String?
+  listing   Listing?    @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  dealerId  String?
+  dealer    Dealer?     @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  rating    Int
+  title     String?
+  body      String
+  status    ContentStatus @default(PENDING_REVIEW)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([dealerId, status])
+  @@map("reviews")
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  listingId   String?
+  listing     Listing?     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporterId  String?
+  reporter    User?        @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  reason      String
+  details     String?
+  status      ReportStatus @default(OPEN)
+  handledById String?
+  resolution  String?
+  createdAt   DateTime     @default(now())
+  resolvedAt  DateTime?
+
+  @@index([status, createdAt])
+  @@map("reports")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId String?
+  listing   Listing?         @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  type      NotificationType
+  title     String
+  body      String
+  href      String?
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+model AdminLog {
+  id         String   @id @default(uuid())
+  adminId    String?
+  admin      User?    @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String?
+  targetId   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@map("admin_logs")
+}
+
+model SavedSearch {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  queryString String
+  alertEnabled Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, name])
+  @@map("saved_searches")
+}
+
+model CmsPage {
+  id            String        @id @default(uuid())
+  title         String
+  slug          String        @unique
+  content       String
+  seoTitle      String?
+  seoDescription String?
+  status        ContentStatus @default(DRAFT)
+  authorId      String?
+  author        User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  publishedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("cms_pages")
+}
+
+model NewsArticle {
+  id            String        @id @default(uuid())
+  title         String
+  slug          String        @unique
+  excerpt       String
+  content       String
+  coverUrl      String?
+  category      String?
+  tags          String[]
+  authorId      String?
+  author        User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  status        ContentStatus @default(DRAFT)
+  publishedAt   DateTime?
+  views         Int           @default(0)
+  seoTitle      String?
+  seoDescription String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status, publishedAt])
+  @@map("news_articles")
+}
+
+model SiteSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+/// Admin-managed showroom cars used by Featured New Cars and car comparison.
+model NewCar {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  make      String
+  year      Int
+  /// popular | upcoming | launched
+  tab       String   @default("popular")
+  imageUrl  String?
+  price     Int
+  summary   String?
+  specs     Json?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, tab, sortOrder])
+  @@map("new_cars")
+}

@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* --------------------------------------------------------------------------
+   Garidekho design system — premium automotive marketplace palette
+
+   Navy      #102A43  header, navigation, footer, dark surfaces
+   Blue      #1677FF  links, active filters, selected states, focus rings
+   Orange    #F97316  primary calls to action and price highlights
+   Canvas    #F1F5F9  page background
+   Surface   #FFFFFF  cards
+   Text      #111827 / #64748B
+   Border    #E2E8F0
+
+   `teal-*` is a legacy alias for the orange CTA scale and `ink-*` is the
+   neutral scale. Both are re-emitted at :root by the site customizer. The
+   `navy`, `link` and `cta` tokens below are fixed semantic aliases.
+   -------------------------------------------------------------------------- */
+@theme {
+  --color-navy: #102a43;
+  --color-link: #1677ff;
+  --color-link-ink: #0b62e0; /* accessible link text on light surfaces */
+  --color-link-soft: #60a5fa;
+  --color-cta: #f97316;
+  --color-cta-hover: #ea580c;
+  --color-cta-ink: #c2410c; /* accessible price text on white cards */
+
+  --color-ink-50: #f1f5f9;
+  --color-ink-100: #e2e8f0;
+  --color-ink-200: #cbd5e1;
+  --color-ink-300: #94a3b8;
+  --color-ink-400: #64748b;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #111827;
+  --color-ink-950: #102a43;
+
+  --color-teal-50: #fff7ed;
+  --color-teal-100: #ffedd5;
+  --color-teal-200: #fed7aa;
+  --color-teal-300: #fdba74;
+  --color-teal-400: #fb923c;
+  --color-teal-500: #f97316;
+  --color-teal-600: #f97316;
+  --color-teal-700: #ea580c;
+  --color-teal-800: #c2410c;
+  --color-teal-900: #9a3412;
+
+  --color-signal-50: #eff6ff;
+  --color-signal-100: #dbeafe;
+  --color-signal-200: #bfdbfe;
+  --color-signal-300: #93c5fd;
+  --color-signal-400: #60a5fa;
+  --color-signal-500: #1677ff;
+  --color-signal-600: #0b62e0;
+  --color-signal-700: #0950b8;
+
+  --color-canvas: #f1f5f9;
+  --color-surface: #ffffff;
+
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -12px rgb(15 23 42 / 0.10);
+  --shadow-float: 0 12px 40px -12px rgb(15 23 42 / 0.22);
+
+  --radius-card: 0.75rem;
+
+  --animate-fade-up: fade-up 0.5s ease-out both;
+  --animate-shimmer: shimmer 2s linear infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-ink-100);
+  }
+
+  html {
+    font-size: var(--gdk-base-size, 16px);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .dark body {
+    background: var(--color-ink-950);
+    color: var(--color-ink-100);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+  }
+
+  ::selection {
+    background: var(--color-signal-200);
+    color: var(--color-ink-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: 2px;
+  }
+
+  /* Header/footer can have their own background. Re-scoping the ink tokens keeps
+     every existing text/border utility legible against that chosen colour. */
+  .gdk-chrome {
+    --color-ink-50: color-mix(in srgb, var(--gdk-chrome-fg) 8%, transparent);
+    --color-ink-100: color-mix(in srgb, var(--gdk-chrome-fg) 12%, transparent);
+    --color-ink-200: color-mix(in srgb, var(--gdk-chrome-fg) 22%, transparent);
+    --color-ink-300: color-mix(in srgb, var(--gdk-chrome-fg) 40%, transparent);
+    --color-ink-400: color-mix(in srgb, var(--gdk-chrome-fg) 58%, transparent);
+    --color-ink-500: color-mix(in srgb, var(--gdk-chrome-fg) 70%, transparent);
+    --color-ink-600: color-mix(in srgb, var(--gdk-chrome-fg) 80%, transparent);
+    --color-ink-700: color-mix(in srgb, var(--gdk-chrome-fg) 90%, transparent);
+    --color-ink-800: var(--gdk-chrome-fg);
+    --color-ink-900: var(--gdk-chrome-fg);
+    --color-ink-950: var(--gdk-chrome-fg);
+    color: var(--gdk-chrome-fg);
+  }
+}
+
+@layer utilities {
+  /* #1677FF is the brand blue for fills and focus rings; this AA-safe shade is
+     used wherever that blue appears as text on a light background. The doubled
+     class keeps this override ahead of Tailwind's generated token utility. */
+  .text-link.text-link {
+    color: var(--color-link-ink);
+  }
+
+  /* Panels rendered inside the navy chrome need the normal, light-surface ink
+     scale instead of the translucent chrome scale. */
+  .gdk-on-light {
+    --color-ink-50: #f1f5f9;
+    --color-ink-100: #e2e8f0;
+    --color-ink-200: #cbd5e1;
+    --color-ink-300: #94a3b8;
+    --color-ink-400: #64748b;
+    --color-ink-500: #64748b;
+    --color-ink-600: #475569;
+    --color-ink-700: #334155;
+    --color-ink-800: #1e293b;
+    --color-ink-900: #111827;
+    --color-ink-950: #102a43;
+    color: var(--color-ink-900);
+  }
+
+  .dark .gdk-on-light {
+    color: var(--color-ink-100);
+  }
+
+  .container-gdk {
+    width: 100%;
+    max-width: 82rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .container-gdk { padding-inline: 1.5rem; }
+  }
+
+  @media (min-width: 1024px) {
+    .container-gdk { padding-inline: 2rem; }
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+
+  .text-balance { text-wrap: balance; }
+
+  .surface-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-ink-100);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 200ms ease, border-color 200ms ease;
+  }
+
+  .surface-card:hover {
+    box-shadow: 0 4px 14px rgb(15 23 42 / 0.10);
+  }
+
+  .dark .surface-card {
+    background: var(--color-ink-900);
+    border-color: var(--color-ink-800);
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-ink-100) 25%, var(--color-ink-50) 50%, var(--color-ink-100) 75%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+}
